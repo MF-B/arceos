@@ -114,7 +114,7 @@ unsafe fn init_boot_page_table() {
 ///
 /// Documentation: <https://docs.kernel.org/arch/arm64/booting.html>
 /// The earliest entry point for the primary CPU.
-#[unsafe(naked)]
+#[unsafe(unsafe(naked))]
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.boot")]
 unsafe extern "C" fn _start() -> ! {

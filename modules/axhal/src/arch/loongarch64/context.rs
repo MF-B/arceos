@@ -1,4 +1,6 @@
 use core::arch::naked_asm;
+#[cfg(feature = "fp_simd")]
+use core::mem::offset_of;
 use memory_addr::VirtAddr;
 
 /// General registers of Loongarch64.
@@ -40,6 +42,19 @@ pub struct GeneralRegisters {
     pub s8: usize,
 }
 
+/// Floating-point registers of LoongArch64.
+#[cfg(feature = "fp_simd")]
+#[repr(C)]
+#[derive(Debug, Default, Clone, Copy)]
+pub struct FpStatus {
+    /// Floating-point registers (f0-f31)
+    pub fp: [u64; 32],
+    /// Floating-point Condition Code register
+    pub fcc: [u8; 8],
+    /// Floating-point Control and Status register
+    pub fcsr: usize,
+}
+
 /// Saved registers when a trap (interrupt or exception) occurs.
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -55,32 +70,107 @@ pub struct TrapFrame {
 impl TrapFrame {
     /// Gets the 0th syscall argument.
     pub const fn arg0(&self) -> usize {
-        self.regs.a0 as _
+        self.regs.a0
+    }
+
+    /// Sets the 0th syscall argument.
+    pub const fn set_arg0(&mut self, a0: usize) {
+        self.regs.a0 = a0;
     }
 
     /// Gets the 1st syscall argument.
     pub const fn arg1(&self) -> usize {
-        self.regs.a1 as _
+        self.regs.a1
+    }
+
+    /// Sets the 1st syscall argument.
+    pub const fn set_arg1(&mut self, a1: usize) {
+        self.regs.a1 = a1;
     }
 
     /// Gets the 2nd syscall argument.
     pub const fn arg2(&self) -> usize {
-        self.regs.a2 as _
+        self.regs.a2
+    }
+
+    /// Sets the 2nd syscall argument.
+    pub const fn set_arg2(&mut self, a2: usize) {
+        self.regs.a2 = a2;
     }
 
     /// Gets the 3rd syscall argument.
     pub const fn arg3(&self) -> usize {
-        self.regs.a3 as _
+        self.regs.a3
+    }
+
+    /// Sets the 3rd syscall argument.
+    pub const fn set_arg3(&mut self, a3: usize) {
+        self.regs.a3 = a3;
     }
 
     /// Gets the 4th syscall argument.
     pub const fn arg4(&self) -> usize {
-        self.regs.a4 as _
+        self.regs.a4
+    }
+
+    /// Sets the 4th syscall argument.
+    pub const fn set_arg4(&mut self, a4: usize) {
+        self.regs.a4 = a4;
     }
 
     /// Gets the 5th syscall argument.
     pub const fn arg5(&self) -> usize {
-        self.regs.a5 as _
+        self.regs.a5
+    }
+
+    /// Sets the 5th syscall argument.
+    pub const fn set_arg5(&mut self, a5: usize) {
+        self.regs.a5 = a5;
+    }
+
+    /// Gets the instruction pointer.
+    pub const fn ip(&self) -> usize {
+        self.era
+    }
+
+    /// Sets the instruction pointer.
+    pub const fn set_ip(&mut self, pc: usize) {
+        self.era = pc;
+    }
+
+    /// Gets the stack pointer.
+    pub const fn sp(&self) -> usize {
+        self.regs.sp
+    }
+
+    /// Sets the stack pointer.
+    pub const fn set_sp(&mut self, sp: usize) {
+        self.regs.sp = sp;
+    }
+
+    /// Gets the return value register.
+    pub const fn retval(&self) -> usize {
+        self.regs.a0
+    }
+
+    /// Sets the return value register.
+    pub const fn set_retval(&mut self, a0: usize) {
+        self.regs.a0 = a0;
+    }
+
+    /// Sets the return address.
+    pub const fn set_ra(&mut self, ra: usize) {
+        self.regs.ra = ra;
+    }
+
+    /// Gets the TLS area.
+    pub const fn tls(&self) -> usize {
+        self.regs.tp
+    }
+
+    /// Sets the TLS area.
+    pub const fn set_tls(&mut self, tls_area: usize) {
+        self.regs.tp = tls_area;
     }
 }
 
@@ -113,31 +203,6 @@ impl UspaceContext {
         Self(*trap_frame)
     }
 
-    /// Gets the instruction pointer.
-    pub const fn get_ip(&self) -> usize {
-        self.0.era
-    }
-
-    /// Gets the stack pointer.
-    pub const fn get_sp(&self) -> usize {
-        self.0.regs.sp
-    }
-
-    /// Sets the instruction pointer.
-    pub const fn set_ip(&mut self, pc: usize) {
-        self.0.era = pc;
-    }
-
-    /// Sets the stack pointer.
-    pub const fn set_sp(&mut self, sp: usize) {
-        self.0.regs.sp = sp;
-    }
-
-    /// Sets the return value register.
-    pub const fn set_retval(&mut self, a0: usize) {
-        self.0.regs.a0 = a0;
-    }
-
     /// Enters user space.
     ///
     /// It restores the user registers and jumps to the user entry point
@@ -153,7 +218,7 @@ impl UspaceContext {
         use loongArch64::register::era;
 
         super::disable_irqs();
-        era::set_pc(self.get_ip());
+        era::set_pc(self.ip());
 
         unsafe {
             core::arch::asm!(
@@ -180,13 +245,29 @@ impl UspaceContext {
     }
 }
 
+#[cfg(feature = "uspace")]
+impl core::ops::Deref for UspaceContext {
+    type Target = TrapFrame;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[cfg(feature = "uspace")]
+impl core::ops::DerefMut for UspaceContext {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Saved hardware states of a task.
 ///
 /// The context usually includes:
 ///
 /// - Callee-saved registers
 /// - Stack pointer register
-/// - Thread pointer register (for thread-local storage, currently unsupported)
+/// - Thread pointer register (for kernel space thread-local storage)
 /// - FP/SIMD registers
 ///
 /// On context switch, current task saves its context from CPU to memory,
@@ -206,6 +287,9 @@ pub struct TaskContext {
     #[cfg(feature = "uspace")]
     /// user page table root
     pub pgdl: usize,
+    #[cfg(feature = "fp_simd")]
+    /// Floating Point Status
+    pub fp_status: FpStatus,
 }
 
 impl TaskContext {
@@ -246,8 +330,48 @@ impl TaskContext {
                 unsafe { super::write_page_table_root0(pa!(next_ctx.pgdl)) };
             }
         }
+        #[cfg(feature = "fp_simd")]
+        unsafe {
+            save_fp_registers(&mut self.fp_status);
+            restore_fp_registers(&next_ctx.fp_status);
+        }
+
         unsafe { context_switch(self, next_ctx) }
     }
+}
+
+#[cfg(feature = "fp_simd")]
+#[unsafe(naked)]
+unsafe extern "C" fn save_fp_registers(fp_status: &mut FpStatus) {
+    naked_asm!(
+        include_fp_asm_macros!(),
+        "
+        PUSH_FLOAT_REGS $a0
+        addi.d $t8, $a0, {fcc_offset}
+        SAVE_FCC $t8
+        addi.d $t8, $a0, {fcsr_offset}
+        SAVE_FCSR $t8
+        ret",
+        fcc_offset = const offset_of!(FpStatus, fcc),
+        fcsr_offset = const offset_of!(FpStatus, fcsr),
+    )
+}
+
+#[cfg(feature = "fp_simd")]
+#[unsafe(naked)]
+unsafe extern "C" fn restore_fp_registers(fp_status: &FpStatus) {
+    naked_asm!(
+        include_fp_asm_macros!(),
+        "
+        POP_FLOAT_REGS $a0
+        addi.d $t8, $a0, {fcc_offset}
+        RESTORE_FCC $t8
+        addi.d $t8, $a0, {fcsr_offset}
+        RESTORE_FCSR $t8
+        ret",
+        fcc_offset = const offset_of!(FpStatus, fcc),
+        fcsr_offset = const offset_of!(FpStatus, fcsr),
+    )
 }
 
 #[unsafe(naked)]

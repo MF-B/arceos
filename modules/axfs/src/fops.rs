@@ -35,24 +35,20 @@ pub struct Directory {
 }
 
 /// Options and flags which can be used to configure how a file is opened.
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct OpenOptions {
     // generic
     read: bool,
     write: bool,
+    execute: bool,
     append: bool,
     truncate: bool,
     create: bool,
     create_new: bool,
+    directory: bool,
     // system-specific
     _custom_flags: i32,
     _mode: u32,
-}
-
-impl Default for OpenOptions {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl OpenOptions {
@@ -62,10 +58,12 @@ impl OpenOptions {
             // generic
             read: false,
             write: false,
+            execute: false,
             append: false,
             truncate: false,
             create: false,
             create_new: false,
+            directory: false,
             // system-specific
             _custom_flags: 0,
             _mode: 0o666,
@@ -78,6 +76,10 @@ impl OpenOptions {
     /// Sets the option for write access.
     pub fn write(&mut self, write: bool) {
         self.write = write;
+    }
+    /// Sets the option for execute access.
+    pub fn execute(&mut self, execute: bool) {
+        self.execute = execute;
     }
     /// Sets the option for the append mode.
     pub fn append(&mut self, append: bool) {
@@ -95,9 +97,36 @@ impl OpenOptions {
     pub fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
     }
+    /// Sets the option to open a directory.
+    pub fn directory(&mut self, directory: bool) {
+        self.directory = directory;
+    }
+    /// check whether contains directory.
+    pub fn has_directory(&self) -> bool {
+        self.directory
+    }
+
+    /// Sets the create flags.
+    pub fn set_create(mut self, create: bool, create_new: bool) -> Self {
+        self.create = create;
+        self.create_new = create_new;
+        self
+    }
+
+    /// Sets the read flag.
+    pub fn set_read(mut self, read: bool) -> Self {
+        self.read = read;
+        self
+    }
+
+    /// Sets the write flag.
+    pub fn set_write(mut self, write: bool) -> Self {
+        self.write = write;
+        self
+    }
 
     const fn is_valid(&self) -> bool {
-        if !self.read && !self.write && !self.append {
+        if !self.read && !self.write && !self.append && !self.directory {
             return false;
         }
         match (self.write, self.append) {
@@ -148,9 +177,7 @@ impl File {
         };
 
         let attr = node.get_attr()?;
-        if attr.is_dir()
-            && (opts.create || opts.create_new || opts.write || opts.append || opts.truncate)
-        {
+        if attr.is_dir() {
             return ax_err!(IsADirectory);
         }
         let access_cap = opts.into();
@@ -274,13 +301,17 @@ impl Directory {
             return ax_err!(NotADirectory);
         }
         let access_cap = opts.into();
-        if !perm_to_cap(attr.perm()).contains(access_cap) {
+        let cap = perm_to_cap(attr.perm());
+        if !cap.contains(access_cap) {
             return ax_err!(PermissionDenied);
         }
 
         node.open()?;
         Ok(Self {
-            node: WithCap::new(node, access_cap),
+            // Here we use `cap` as capability instead of `access_cap` to allow the user to manipulate the directory
+            // without explicitly setting [`OpenOptions::execute`], but without requiring execute access even for
+            // directories that don't have this permission.
+            node: WithCap::new(node, cap),
             entry_idx: 0,
         })
     }
@@ -398,6 +429,9 @@ impl From<&OpenOptions> for Cap {
         }
         if opts.write | opts.append {
             cap |= Cap::WRITE;
+        }
+        if opts.execute {
+            cap |= Cap::EXECUTE;
         }
         cap
     }

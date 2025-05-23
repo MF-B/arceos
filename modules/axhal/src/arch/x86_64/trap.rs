@@ -31,6 +31,11 @@ fn handle_page_fault(tf: &TrapFrame) {
 
 #[unsafe(no_mangle)]
 fn x86_trap_handler(tf: &mut TrapFrame) {
+    #[cfg(feature = "uspace")]
+    super::tls::switch_to_kernel_fs_base(tf);
+    if !matches!(tf.vector as u8, IRQ_VECTOR_START..=IRQ_VECTOR_END) {
+        unmask_irqs(tf);
+    }
     match tf.vector as u8 {
         PAGE_FAULT_VECTOR => handle_page_fault(tf),
         BREAKPOINT_VECTOR => debug!("#BP @ {:#x} ", tf.rip),
@@ -41,7 +46,7 @@ fn x86_trap_handler(tf: &mut TrapFrame) {
             );
         }
         #[cfg(feature = "uspace")]
-        LEGACY_SYSCALL_VECTOR => super::syscall::x86_syscall_handler(tf),
+        LEGACY_SYSCALL_VECTOR => super::syscall::handle_syscall(tf),
         IRQ_VECTOR_START..=IRQ_VECTOR_END => {
             handle_trap!(IRQ, tf.vector as _);
         }
@@ -56,6 +61,10 @@ fn x86_trap_handler(tf: &mut TrapFrame) {
             );
         }
     }
+    crate::trap::post_trap_callback(tf, tf.is_user());
+    #[cfg(feature = "uspace")]
+    super::tls::switch_to_user_fs_base(tf);
+    mask_irqs();
 }
 
 fn vec_to_str(vec: u64) -> &'static str {
@@ -89,4 +98,23 @@ fn err_code_to_flags(err_code: u64) -> Result<MappingFlags, u64> {
         }
         Ok(flags)
     }
+}
+
+// Interrupt unmasking function for exception handling.
+// NOTE: It must be invoked after the switch to kernel mode has finished
+//
+// If interrupts were enabled before the exception (`IF` bit in `RFlags`
+// is set), re-enable interrupts before handling the exception.
+pub(super) fn unmask_irqs(tf: &TrapFrame) {
+    use x86_64::registers::rflags::RFlags;
+    const IF: u64 = RFlags::INTERRUPT_FLAG.bits();
+    if tf.rflags & IF == IF {
+        super::enable_irqs();
+    } else {
+        debug!("Interrupts were disabled before exception");
+    }
+}
+
+pub(super) fn mask_irqs() {
+    super::disable_irqs();
 }

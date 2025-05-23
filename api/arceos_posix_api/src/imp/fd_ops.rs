@@ -23,9 +23,22 @@ pub trait FileLike: Send + Sync {
 }
 
 def_resource! {
-    pub(crate) static FD_TABLE: ResArc<RwLock<FlattenObjects<Arc<dyn FileLike>, AX_FILE_LIMIT>>> = ResArc::new();
+    pub static FD_TABLE: ResArc<RwLock<FlattenObjects<Arc<dyn FileLike>, AX_FILE_LIMIT>>> = ResArc::new();
 }
 
+impl FD_TABLE {
+    /// Return a copy of the inner table.
+    pub fn copy_inner(&self) -> RwLock<FlattenObjects<Arc<dyn FileLike>, AX_FILE_LIMIT>> {
+        let table = self.read();
+        let mut new_table = FlattenObjects::new();
+        for id in table.ids() {
+            let _ = new_table.add_at(id, table.get(id).unwrap().clone());
+        }
+        RwLock::new(new_table)
+    }
+}
+
+/// Get a file by `fd`.
 pub fn get_file_like(fd: c_int) -> LinuxResult<Arc<dyn FileLike>> {
     FD_TABLE
         .read()
@@ -34,10 +47,12 @@ pub fn get_file_like(fd: c_int) -> LinuxResult<Arc<dyn FileLike>> {
         .ok_or(LinuxError::EBADF)
 }
 
+/// Add a file to the file descriptor table.
 pub fn add_file_like(f: Arc<dyn FileLike>) -> LinuxResult<c_int> {
     Ok(FD_TABLE.write().add(f).map_err(|_| LinuxError::EMFILE)? as c_int)
 }
 
+/// Close a file by `fd`.
 pub fn close_file_like(fd: c_int) -> LinuxResult {
     let f = FD_TABLE
         .write()
