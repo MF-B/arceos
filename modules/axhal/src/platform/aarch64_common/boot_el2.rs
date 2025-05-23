@@ -125,89 +125,85 @@ unsafe fn cache_invalidate(cache_level: usize) {
 }
 
 /// The earliest entry point for the primary CPU.
-#[naked]
+#[unsafe(naked)]
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.boot")]
 unsafe extern "C" fn _start() -> ! {
-    unsafe {
-        // PC = 0x8_0000
-        // X0 = dtb
-        core::arch::naked_asm!("
-        // save DTB pointer
-        mov     x20, x0             
-             
-        // disable cache and MMU
-        mrs x1, sctlr_el2
-        bic x1, x1, #0xf
-        msr sctlr_el2, x1
+    // PC = 0x8_0000
+    // X0 = dtb
+    core::arch::naked_asm!("
+    // save DTB pointer
+    mov     x20, x0             
+            
+    // disable cache and MMU
+    mrs x1, sctlr_el2
+    bic x1, x1, #0xf
+    msr sctlr_el2, x1
 
-        // cache_invalidate(0): clear dl1$
-        mov x0, #0
-        bl  {cache_invalidate}
-        mov x0, #2
-        bl  {cache_invalidate}
+    // cache_invalidate(0): clear dl1$
+    mov x0, #0
+    bl  {cache_invalidate}
+    mov x0, #2
+    bl  {cache_invalidate}
 
-        mrs     x19, mpidr_el1
-        and     x19, x19, #0xffffff     // get current CPU id
+    mrs     x19, mpidr_el1
+    and     x19, x19, #0xffffff     // get current CPU id
 
-        adrp    x8, {boot_stack}        // setup boot stack
-        add     x8, x8, {boot_stack_size}
-        mov     sp, x8
+    adrp    x8, {boot_stack}        // setup boot stack
+    add     x8, x8, {boot_stack_size}
+    mov     sp, x8
 
-        bl      {switch_to_el2}         // switch to EL2
-        bl      {enable_fp}             // enable fp/neon
-        bl      {init_boot_page_table}
-        bl      {init_mmu_el2}
+    bl      {switch_to_el2}         // switch to EL2
+    bl      {enable_fp}             // enable fp/neon
+    bl      {init_boot_page_table}
+    bl      {init_mmu_el2}
 
-        mov     x8, {phys_virt_offset}  // set SP to the high address
-        add     sp, sp, x8
+    mov     x8, {phys_virt_offset}  // set SP to the high address
+    add     sp, sp, x8
 
-        mov     x0, x19                 // call rust_entry(cpu_id, dtb)
-        mov     x1, x20
-        ldr     x8, ={entry}
-        blr     x8
-        b      .",
-            cache_invalidate = sym cache_invalidate,
-            init_boot_page_table = sym init_boot_page_table,
-            init_mmu_el2 = sym init_mmu_el2,
-            switch_to_el2 = sym switch_to_el2,
-            enable_fp = sym enable_fp,
-            boot_stack = sym BOOT_STACK,
-            boot_stack_size = const TASK_STACK_SIZE,
-            phys_virt_offset = const axconfig::plat::PHYS_VIRT_OFFSET,
-            entry = sym crate::platform::rust_entry,
-        );
-    }
+    mov     x0, x19                 // call rust_entry(cpu_id, dtb)
+    mov     x1, x20
+    ldr     x8, ={entry}
+    blr     x8
+    b      .",
+        cache_invalidate = sym cache_invalidate,
+        init_boot_page_table = sym init_boot_page_table,
+        init_mmu_el2 = sym init_mmu_el2,
+        switch_to_el2 = sym switch_to_el2,
+        enable_fp = sym enable_fp,
+        boot_stack = sym BOOT_STACK,
+        boot_stack_size = const TASK_STACK_SIZE,
+        phys_virt_offset = const axconfig::plat::PHYS_VIRT_OFFSET,
+        entry = sym crate::platform::rust_entry,
+    );
 }
 
 /// The earliest entry point for the secondary CPUs.
 #[cfg(feature = "smp")]
-#[naked]
+#[unsafe(naked)]
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.boot")]
 unsafe extern "C" fn _start_secondary() -> ! {
-    unsafe {
-        core::arch::naked_asm!("
-        mrs     x19, mpidr_el1
-        and     x19, x19, #0xffffff     // get current CPU id
+    core::arch::naked_asm!("
+    mrs     x19, mpidr_el1
+    and     x19, x19, #0xffffff     // get current CPU id
 
-        mov     sp, x0
-        bl      {switch_to_el2}
-        bl      {init_mmu_el2}
-        bl      {enable_fp}
+    mov     sp, x0
+    bl      {switch_to_el2}
+    bl      {init_mmu_el2}
+    bl      {enable_fp}
 
-        mov     x8, {phys_virt_offset}  // set SP to the high address
-        add     sp, sp, x8
+    mov     x8, {phys_virt_offset}  // set SP to the high address
+    add     sp, sp, x8
 
-        mov     x0, x19                 // call rust_entry_secondary(cpu_id)
-        ldr     x8, ={entry}
-        blr     x8
-        b      .",
-            switch_to_el2 = sym switch_to_el2,
-            init_mmu_el2 = sym init_mmu_el2,
-            enable_fp = sym enable_fp,
-            phys_virt_offset = const axconfig::plat::PHYS_VIRT_OFFSET,
-            entry = sym crate::platform::rust_entry_secondary,
-        )
-    }
+    mov     x0, x19                 // call rust_entry_secondary(cpu_id)
+    ldr     x8, ={entry}
+    blr     x8
+    b      .",
+        switch_to_el2 = sym switch_to_el2,
+        init_mmu_el2 = sym init_mmu_el2,
+        enable_fp = sym enable_fp,
+        phys_virt_offset = const axconfig::plat::PHYS_VIRT_OFFSET,
+        entry = sym crate::platform::rust_entry_secondary,
+    )
 }
