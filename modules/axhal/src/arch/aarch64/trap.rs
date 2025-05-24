@@ -6,7 +6,11 @@ use tock_registers::interfaces::Readable;
 
 use super::TrapFrame;
 
-global_asm!(include_str!("trap.S"), cache_current_task_ptr = sym crate::cpu::cache_current_task_ptr);
+global_asm!(
+    include_str!("trap.S"),
+    trapframe_size = const core::mem::size_of::<TrapFrame>(),
+    cache_current_task_ptr = sym crate::cpu::cache_current_task_ptr,
+);
 
 #[repr(u8)]
 #[derive(Debug)]
@@ -27,6 +31,11 @@ enum TrapSource {
     LowerAArch64 = 2,
     LowerAArch32 = 3,
 }
+impl TrapSource {
+    fn is_from_user(&self) -> bool {
+        matches!(self, TrapSource::LowerAArch64 | TrapSource::LowerAArch32)
+    }
+}
 
 #[unsafe(no_mangle)]
 fn invalid_exception(tf: &TrapFrame, kind: TrapKind, source: TrapSource) {
@@ -37,8 +46,9 @@ fn invalid_exception(tf: &TrapFrame, kind: TrapKind, source: TrapSource) {
 }
 
 #[unsafe(no_mangle)]
-fn handle_irq_exception(_tf: &TrapFrame) {
+fn handle_irq_exception(tf: &mut TrapFrame, source: TrapSource) {
     handle_trap!(IRQ, 0);
+    crate::trap::post_trap_callback(tf, source.is_from_user());
 }
 
 fn handle_instruction_abort(tf: &TrapFrame, iss: u64, is_user: bool) {
@@ -94,9 +104,12 @@ fn handle_data_abort(tf: &TrapFrame, iss: u64, is_user: bool) {
 }
 
 #[unsafe(no_mangle)]
-fn handle_sync_exception(tf: &mut TrapFrame) {
+fn handle_sync_exception(tf: &mut TrapFrame, source: TrapSource) {
     let esr = ESR_EL1.extract();
     let iss = esr.read(ESR_EL1::ISS);
+
+    unmask_irqs(tf);
+
     match esr.read_as_enum(ESR_EL1::EC) {
         #[cfg(feature = "uspace")]
         Some(ESR_EL1::EC::Value::SVC64) => {
@@ -120,4 +133,28 @@ fn handle_sync_exception(tf: &mut TrapFrame) {
             );
         }
     }
+    crate::trap::post_trap_callback(tf, source.is_from_user());
+    mask_irqs();
+}
+
+// Interrupt unmasking function for exception handling.
+// NOTE: It must be invoked after the switch to kernel mode has finished
+//
+// If interrupts were enabled before the exception (`I` bit in `SPSR` is unmask),
+// re-enable interrupts before handling the exception.
+//
+// On aarch64, when an exception occurs, the `CPSR` register value is stored in
+// `SPSR_EL1`, where the `I` bit records whether the interrupt is enabled or not.
+// `I::unmask` enable_irqs
+fn unmask_irqs(tf: &TrapFrame) {
+    const I_MASK: u64 = 1 << 7;
+    if tf.spsr & I_MASK != I_MASK {
+        super::enable_irqs();
+    } else {
+        debug!("Interrupts were disabled before exception");
+    }
+}
+
+fn mask_irqs() {
+    super::disable_irqs();
 }

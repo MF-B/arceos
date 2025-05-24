@@ -426,6 +426,8 @@ dependencies = [
  "fatfs",
  "lazyinit",
  "log",
+ "lwext4_rust",
+ "spin",
 ]
 
 [[package]]
@@ -505,9 +507,9 @@ dependencies = [
 
 [[package]]
 name = "axio"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8ca9c10ea4cd42bda87a2abde281fb481c76a0b05976fd03697385ea65d5122"
+checksum = "30aa258a37c25c5e9d3ff45ec80e728ff7c499586e3e40719daf7908f10fd5bd"
 dependencies = [
  "axerrno",
 ]
@@ -548,6 +550,7 @@ dependencies = [
  "log",
  "memory_addr",
  "memory_set",
+ "page_table_multiarch",
 ]
 
 [[package]]
@@ -616,7 +619,8 @@ dependencies = [
  "axsync",
  "axtask",
  "kspin",
- "rand 0.8.5",
+ "lock_api",
+ "rand 0.9.1",
 ]
 
 [[package]]
@@ -993,9 +997,9 @@ dependencies = [
 
 [[package]]
 name = "flatten_objects"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a44a8ee8095192119780ad867a02cfb86c44f3cebd16b7161d84e1fb8e26482"
+checksum = "e362dae0b64fc12551b655a09484a643461a283a078fb8a9686d1f58fa46df9a"
 dependencies = [
  "bitmaps",
 ]
@@ -1258,6 +1262,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lwext4_rust"
+version = "0.2.0"
+source = "git+https://github.com/Azure-stars/lwext4_rust.git#2e56b0aa2680b210892a46375fefca2bdf6e2865"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "managed"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1271,15 +1283,15 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
 name = "memory_addr"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f769efcf10b9dfb4c913bebb409cda77b1a3f072b249bf5465e250bcb30eb49"
+checksum = "5438b8df0f13e16e1f46140de247695a95952a5a4479e47197a8711bf1063373"
 
 [[package]]
 name = "memory_set"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "335675b7ab07460f532d3b2b557313be73037fdf81b65464d8c0d8bd90d2fbf9"
+checksum = "a4552d02c866c57e8b06b919ea8c2f8f398cad245b8f6aac726657bc972d663d"
 dependencies = [
  "memory_addr",
 ]
@@ -1324,8 +1336,7 @@ checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
 [[package]]
 name = "page_table_entry"
 version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c097d641745a066856a26eed6e486d4430bb3e32c94f1203ea09c63239b360a0"
+source = "git+https://github.com/Mivik/page_table_multiarch.git?rev=19ededd#19ededdb806ab3b22efb4880661790524fa421a5"
 dependencies = [
  "aarch64-cpu 10.0.0",
  "bitflags 2.9.1",
@@ -1336,8 +1347,7 @@ dependencies = [
 [[package]]
 name = "page_table_multiarch"
 version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4647889585d29762d747be0916d6d28db72967a697d142be86f187a6b496832a"
+source = "git+https://github.com/Mivik/page_table_multiarch.git?rev=19ededd#19ededdb806ab3b22efb4880661790524fa421a5"
 dependencies = [
  "log",
  "memory_addr",
@@ -1516,22 +1526,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6df7ab838ed27997ba19a4664507e6f82b41fe6e20be42929332156e5e85146"
 dependencies = [
  "bitflags 2.9.1",
-]
-
-[[package]]
-name = "rdif-base"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023bd968dcec1d1d01092fdf0e6473cd4fee4b3a4140e524d5952cf332882a36"
-
-[[package]]
-name = "rdif-intc"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4dce859ee52f984c78d41f647eb3266e58824e385583ae64a5467597c84fd5a"
-dependencies = [
- "cfg-if",
- "rdif-base",
 ]
 
 [[package]]

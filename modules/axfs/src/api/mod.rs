@@ -56,7 +56,7 @@ pub fn write<C: AsRef<[u8]>>(path: &str, contents: C) -> io::Result<()> {
 /// Given a path, query the file system to get information about a file,
 /// directory, etc.
 pub fn metadata(path: &str) -> io::Result<Metadata> {
-    File::open(path)?.metadata()
+    crate::root::lookup(None, path)?.get_attr().map(Metadata)
 }
 
 /// Creates a new, empty directory at the provided path.
@@ -86,4 +86,9 @@ pub fn remove_file(path: &str) -> io::Result<()> {
 /// This only works then the new path is in the same mounted fs.
 pub fn rename(old: &str, new: &str) -> io::Result<()> {
     crate::root::rename(old, new)
+}
+
+/// check whether absolute path exists.
+pub fn absolute_path_exists(path: &str) -> bool {
+    crate::root::lookup(None, path).is_ok()
 }

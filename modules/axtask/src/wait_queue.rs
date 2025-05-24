@@ -1,5 +1,6 @@
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use kernel_guard::{NoOp, NoPreemptIrqSave};
 use kspin::{SpinNoIrq, SpinNoIrqGuard};
@@ -200,6 +201,32 @@ impl WaitQueue {
         } else {
             false
         }
+    }
+
+    /// Requeues at most `count` tasks in the wait queue to the target wait queue.
+    ///
+    /// Returns the number of tasks requeued.
+    pub fn requeue(&self, mut count: usize, target: &WaitQueue) -> usize {
+        let tasks: Vec<_> = {
+            let mut wq = self.queue.lock();
+            count = count.min(wq.len());
+            wq.drain(..count).collect()
+        };
+        if !tasks.is_empty() {
+            let mut wq = target.queue.lock();
+            wq.extend(tasks);
+        }
+        count
+    }
+
+    /// Returns the number of tasks in the wait queue.
+    pub fn len(&self) -> usize {
+        self.queue.lock().len()
+    }
+
+    /// Returns true if the wait queue is empty.
+    pub fn is_empty(&self) -> bool {
+        self.queue.lock().is_empty()
     }
 }
 
