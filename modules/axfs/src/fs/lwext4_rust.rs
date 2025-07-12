@@ -266,6 +266,9 @@ impl VfsNodeOps for FileWrapper {
         } else if file.check_inode_exist(fpath, InodeTypes::EXT4_DE_REG_FILE) {
             trace!("lookup new FILE FileWrapper");
             Ok(Arc::new(Self::new(fpath, InodeTypes::EXT4_DE_REG_FILE)))
+        } else if file.check_inode_exist(fpath, InodeTypes::EXT4_DE_SYMLINK) {
+            trace!("lookup new SYMLINK FileWrapper");
+            Ok(Arc::new(Self::new(fpath, InodeTypes::EXT4_DE_SYMLINK)))
         } else {
             Err(VfsError::NotFound)
         }
@@ -323,6 +326,25 @@ impl VfsNodeOps for FileWrapper {
 
     fn as_any(&self) -> &dyn core::any::Any {
         self as &dyn core::any::Any
+    }
+
+    fn symlink(&self, target: &str, path: &str) -> VfsResult {
+        let mut file = self.0.lock();
+        file.create_symlink(target, path)
+            .map(|_v| ())
+            .map_err(|e| e.try_into().unwrap())
+    }
+
+    fn readlink(&self, path: &str, buf: &mut [u8]) -> VfsResult<usize> {
+        let mut file = self.0.lock();
+        file.readlink(path, buf)
+            .map(|len| len as usize)
+            .map_err(|e| e.try_into().unwrap())
+    }
+
+    fn is_symlink(&self) -> bool {
+        let file = self.0.lock();
+        file.get_type() == InodeTypes::EXT4_DE_SYMLINK
     }
 }
 

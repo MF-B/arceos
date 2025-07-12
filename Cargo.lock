@@ -403,6 +403,7 @@ dependencies = [
  "axfs_devfs",
  "axfs_ramfs",
  "axfs_vfs",
+ "axhal",
  "axio",
  "axns",
  "axsync",
@@ -419,9 +420,8 @@ dependencies = [
 
 [[package]]
 name = "axfs_devfs"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d62eff0490e10cd2c2a74be2979820f0293fa5ebe00ee8bfd87b88ac7dd7d235"
+version = "0.1.2"
+source = "git+https://github.com/MF-B/axfs_crates.git#54ea5c36230ff352c59c6cb05a2b7162172237e0"
 dependencies = [
  "axfs_vfs",
  "log",
@@ -430,9 +430,8 @@ dependencies = [
 
 [[package]]
 name = "axfs_ramfs"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db46c6dae25a123579d5fdcdcc502d0dc2a8af86646106004c8a9181433271b1"
+version = "0.1.2"
+source = "git+https://github.com/MF-B/axfs_crates.git#54ea5c36230ff352c59c6cb05a2b7162172237e0"
 dependencies = [
  "axfs_vfs",
  "log",
@@ -441,9 +440,8 @@ dependencies = [
 
 [[package]]
 name = "axfs_vfs"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2314ebe07a2fef7b1c1a7d15ab817941cd306ace651bb50024b5a8b3e8485359"
+version = "0.1.2"
+source = "git+https://github.com/MF-B/axfs_crates.git#54ea5c36230ff352c59c6cb05a2b7162172237e0"
 dependencies = [
  "axerrno",
  "bitflags 2.9.1",
@@ -1216,7 +1214,7 @@ dependencies = [
 [[package]]
 name = "lwext4_rust"
 version = "0.2.0"
-source = "git+https://github.com/Azure-stars/lwext4_rust.git#2e56b0aa2680b210892a46375fefca2bdf6e2865"
+source = "git+https://github.com/MF-B/lwext4_rust.git#6bc409e238424395c5e487e513ec9a74606e2b0e"
 dependencies = [
  "log",
 ]

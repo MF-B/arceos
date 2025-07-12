@@ -15,6 +15,7 @@ use crate::{
     fs::{self},
     mounts,
 };
+use axfs_vfs::VfsNodePerm;
 
 def_resource! {
     pub static CURRENT_DIR_PATH: ResArc<Mutex<String>> = ResArc::new();
@@ -159,7 +160,27 @@ impl VfsNodeOps for RootDirectory {
             if rest_path.is_empty() {
                 ax_err!(PermissionDenied) // cannot rename mount points
             } else {
-                fs.root_dir().rename(rest_path, dst_path)
+                fs.root_dir().rename(src_path, dst_path)
+            }
+        })
+    }
+
+    fn symlink(&self, target: &str, path: &str) -> VfsResult {
+        self.lookup_mounted_fs(target, |fs, rest_path| {
+            if rest_path.is_empty() {
+                ax_err!(InvalidInput)
+            } else {
+                fs.root_dir().symlink(target, path)
+            }
+        })
+    }
+
+    fn readlink(&self, path: &str, buf: &mut [u8]) -> VfsResult<usize> {
+        self.lookup_mounted_fs(path, |fs, rest_path| {
+            if rest_path.is_empty() {
+                ax_err!(NotFound) // cannot read link of mount points
+            } else {
+                fs.root_dir().readlink(path, buf)
             }
         })
     }
@@ -335,4 +356,43 @@ pub(crate) fn rename(old: &str, new: &str) -> AxResult {
         remove_file(None, new)?;
     }
     parent_node_of(None, old).rename(old, new)
+}
+
+pub(crate) fn create_symlink(target: &str, path: &str) -> AxResult {
+    if target.is_empty() || path.is_empty() {
+        return ax_err!(InvalidInput);
+    }
+
+    let parent = parent_node_of(None, target);
+    parent.symlink(target, path)
+}
+
+pub(crate) fn read_link(path: &str, buf: &mut [u8]) -> AxResult<usize> {
+    if path.is_empty() {
+        return ax_err!(NotFound);
+    }
+    let parent = parent_node_of(None, path);
+    parent.readlink(path, buf)
+}
+
+pub(crate) fn set_perm(path: &str, mode: u16) -> AxResult {
+    let mut abs_path = absolute_path(path)?;
+    if !abs_path.ends_with('/') {
+        abs_path += "/";
+    }
+
+    let node = lookup(None, &abs_path)?;
+    let mut attr = node.get_attr()?;
+    attr.set_perm(VfsNodePerm::from_bits(mode).ok_or(AxError::InvalidInput)?);
+    Ok(())
+}
+
+pub(crate) fn is_symlink(path: &str) -> AxResult<bool> {
+    debug!("Checking if path is a symlink: {}", path);
+    if path.is_empty() {
+        return ax_err!(NotFound);
+    }
+    let node = lookup(None, path)?;
+    debug!("Node found for symlink check");
+    Ok(node.is_symlink())
 }

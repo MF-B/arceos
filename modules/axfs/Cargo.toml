@@ -28,16 +28,17 @@ lazyinit = "0.2"
 cap_access = "0.1"
 axio = { version = "0.1.1", features = ["alloc"] }
 axerrno = "0.1"
-axfs_vfs = "0.1"
+axfs_vfs = { git = "https://github.com/MF-B/axfs_crates.git" }
 spin = "0.9"
-axfs_devfs = { version = "0.1", optional = true }
-axfs_ramfs = { version = "0.1", optional = true }
+axfs_devfs = { git = "https://github.com/MF-B/axfs_crates.git", optional = true }
+axfs_ramfs = { git = "https://github.com/MF-B/axfs_crates.git", optional = true }
 crate_interface = { version = "0.1", optional = true }
 axsync = { workspace = true }
 axdriver = { workspace = true, features = ["block"] }
 axdriver_block = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2" }
-lwext4_rust = { git = "https://github.com/Azure-stars/lwext4_rust.git", default-features = false, optional = true }
+lwext4_rust = { git = "https://github.com/MF-B/lwext4_rust.git", default-features = false, optional = true }
 axns = { workspace = true }
+axhal = { workspace = true }
 
 [dependencies.fatfs]
 git = "https://github.com/rafalh/rust-fatfs"

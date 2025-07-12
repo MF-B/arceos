@@ -92,3 +92,32 @@ pub fn rename(old: &str, new: &str) -> io::Result<()> {
 pub fn absolute_path_exists(path: &str) -> bool {
     crate::root::lookup(None, path).is_ok()
 }
+
+/// Create a symbolic link.
+///
+/// Creates a symbolic link named `new` which contains the string `old`.
+pub fn create_symlink(old: &str, new: &str) -> io::Result<()> {
+    crate::root::create_symlink(old, new)
+}
+
+/// Read the value of a symbolic link.
+///
+/// Reads the contents of the symbolic link at `path` and places the result in `buf`.
+/// Returns the number of bytes read.
+pub fn read_link(path: &str, buf: &mut [u8]) -> io::Result<usize> {
+    crate::root::read_link(path, buf)
+}
+
+/// Check if a path is a symbolic link.
+///
+/// Returns `true` if the path refers to a symbolic link, `false` otherwise.
+pub fn is_symlink(path: &str) -> io::Result<bool> {
+    crate::root::is_symlink(path)
+}
+
+/// Set file permissions.
+///
+/// Changes the permissions of the file at `path` to the specified `mode`.
+pub fn set_permissions(path: &str, mode: u16) -> io::Result<()> {
+    crate::root::set_perm(path, mode)
+}
