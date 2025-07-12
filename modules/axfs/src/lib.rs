@@ -45,3 +45,9 @@ pub fn init_filesystems(mut blk_devs: AxDeviceContainer<AxBlockDevice>) {
     info!("  use block device 0: {:?}", dev.device_name());
     self::root::init_rootfs(self::dev::Disk::new(dev));
 }
+
+#[cfg(test)]
+mod tests {
+    // Empty test module to prevent SIGSEGV in lib tests
+    // Real tests are in integration tests under tests/ directory
+}
