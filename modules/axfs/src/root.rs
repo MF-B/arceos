@@ -2,9 +2,9 @@
 //!
 //! TODO: it doesn't work very well if the mount points have containment relationships.
 
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{format, string::String, string::ToString, sync::Arc, vec::Vec};
 use axerrno::{AxError, AxResult, ax_err};
-use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodeRef, VfsNodeType, VfsOps, VfsResult};
+use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodePerm, VfsNodeRef, VfsNodeType, VfsOps, VfsResult};
 use axns::{ResArc, def_resource};
 use axsync::Mutex;
 use lazyinit::LazyInit;
@@ -15,7 +15,6 @@ use crate::{
     fs::{self},
     mounts,
 };
-use axfs_vfs::VfsNodePerm;
 
 def_resource! {
     pub static CURRENT_DIR_PATH: ResArc<Mutex<String>> = ResArc::new();
@@ -119,7 +118,14 @@ impl RootDirectory {
         if max_len == 0 {
             f(self.main_fs.clone(), path) // not matched any mount point
         } else {
-            f(self.mounts.read()[idx].fs.clone(), &path[max_len..]) // matched at `idx`
+            let rest_path = if path.len() > max_len && path.as_bytes()[max_len] == b'/' {
+                &path[max_len + 1..] // skip mount point and the '/'
+            } else if path.len() == max_len {
+                "" // exact match, empty rest
+            } else {
+                &path[max_len..] // fallback
+            };
+            f(self.mounts.read()[idx].fs.clone(), rest_path) // matched at `idx`
         }
     }
 }
@@ -166,11 +172,11 @@ impl VfsNodeOps for RootDirectory {
     }
 
     fn symlink(&self, target: &str, path: &str) -> VfsResult {
-        self.lookup_mounted_fs(target, |fs, rest_path| {
+        self.lookup_mounted_fs(path, |fs, rest_path| {
             if rest_path.is_empty() {
                 ax_err!(InvalidInput)
             } else {
-                fs.root_dir().symlink(target, path)
+                fs.root_dir().symlink(target, rest_path)
             }
         })
     }
@@ -227,9 +233,7 @@ pub(crate) fn init_rootfs(disk: crate::dev::Disk) {
         .expect("fail to mount sysfs at /sys");
 
     ROOT_DIR.init_once(Arc::new(root_dir));
-    info!("rootfs initialized");
     CURRENT_DIR.init_new(Mutex::new(ROOT_DIR.clone()));
-    info!("test");
     CURRENT_DIR_PATH.init_new(Mutex::new("/".into()));
 }
 
@@ -259,6 +263,53 @@ pub(crate) fn lookup(dir: Option<&VfsNodeRef>, path: &str) -> AxResult<VfsNodeRe
         ax_err!(NotADirectory)
     } else {
         Ok(node)
+    }
+}
+
+/// Lookup a path and follow symbolic links to get the final target
+pub(crate) fn lookup_follow_symlinks_public(
+    dir: Option<&VfsNodeRef>,
+    path: &str,
+) -> AxResult<VfsNodeRef> {
+    const MAX_SYMLINK_DEPTH: u32 = 8;
+
+    let mut current_path = String::from(path);
+    let mut depth = 0;
+
+    loop {
+        if depth > MAX_SYMLINK_DEPTH {
+            return ax_err!(InvalidInput, "Too many levels of symbolic links");
+        }
+
+        match lookup(dir, &current_path) {
+            Ok(node) => {
+                if !node.is_symlink() {
+                    return Ok(node);
+                }
+
+                // Read symlink target
+                let mut buf = [0u8; 4096];
+                let target_len = ROOT_DIR
+                    .main_fs
+                    .root_dir()
+                    .readlink(&current_path, &mut buf)?;
+                let target =
+                    core::str::from_utf8(&buf[..target_len]).map_err(|_| AxError::InvalidData)?;
+
+                current_path = if target.starts_with('/') {
+                    target.to_string()
+                } else {
+                    // Handle relative symlinks
+                    if let Some(parent_pos) = current_path.rfind('/') {
+                        format!("{}/{}", &current_path[..parent_pos], target)
+                    } else {
+                        target.to_string()
+                    }
+                };
+                depth += 1;
+            }
+            Err(e) => return Err(e),
+        }
     }
 }
 
@@ -363,16 +414,17 @@ pub(crate) fn create_symlink(target: &str, path: &str) -> AxResult {
         return ax_err!(InvalidInput);
     }
 
-    let parent = parent_node_of(None, target);
-    parent.symlink(target, path)
+    // For EXT4, try using the root directory directly with full path
+    ROOT_DIR.main_fs.root_dir().symlink(target, path)
 }
 
 pub(crate) fn read_link(path: &str, buf: &mut [u8]) -> AxResult<usize> {
     if path.is_empty() {
         return ax_err!(NotFound);
     }
-    let parent = parent_node_of(None, path);
-    parent.readlink(path, buf)
+
+    // For EXT4, use the root directory directly with full path
+    ROOT_DIR.main_fs.root_dir().readlink(path, buf)
 }
 
 pub(crate) fn set_perm(path: &str, mode: u16) -> AxResult {
@@ -388,11 +440,9 @@ pub(crate) fn set_perm(path: &str, mode: u16) -> AxResult {
 }
 
 pub(crate) fn is_symlink(path: &str) -> AxResult<bool> {
-    debug!("Checking if path is a symlink: {}", path);
     if path.is_empty() {
         return ax_err!(NotFound);
     }
     let node = lookup(None, path)?;
-    debug!("Node found for symlink check");
     Ok(node.is_symlink())
 }

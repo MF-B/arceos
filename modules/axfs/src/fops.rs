@@ -157,7 +157,7 @@ impl File {
             return ax_err!(InvalidInput);
         }
 
-        let node_option = crate::root::lookup(dir, path);
+        let node_option = crate::root::lookup_follow_symlinks_public(dir, path);
         let node = if opts.create || opts.create_new {
             match node_option {
                 Ok(node) => {

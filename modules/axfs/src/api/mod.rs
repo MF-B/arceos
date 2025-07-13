@@ -108,6 +108,16 @@ pub fn read_link(path: &str, buf: &mut [u8]) -> io::Result<usize> {
     crate::root::read_link(path, buf)
 }
 
+/// Get metadata of a file or directory, without following symbolic links.
+///
+/// This is similar to `metadata()` but for symbolic links, it returns the metadata
+/// of the link itself rather than the file it points to.
+pub fn symlink_metadata(path: &str) -> io::Result<Metadata> {
+    let node = crate::root::lookup(None, path)?;
+    let attr = node.get_attr()?;
+    Ok(Metadata(attr))
+}
+
 /// Check if a path is a symbolic link.
 ///
 /// Returns `true` if the path refers to a symbolic link, `false` otherwise.
