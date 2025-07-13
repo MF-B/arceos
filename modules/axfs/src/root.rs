@@ -289,10 +289,7 @@ pub(crate) fn lookup_follow_symlinks_public(
 
                 // Read symlink target
                 let mut buf = [0u8; 4096];
-                let target_len = ROOT_DIR
-                    .main_fs
-                    .root_dir()
-                    .readlink(&current_path, &mut buf)?;
+                let target_len = node.readlink(&current_path, &mut buf)?;
                 let target =
                     core::str::from_utf8(&buf[..target_len]).map_err(|_| AxError::InvalidData)?;
 
@@ -423,8 +420,15 @@ pub(crate) fn read_link(path: &str, buf: &mut [u8]) -> AxResult<usize> {
         return ax_err!(NotFound);
     }
 
-    // For EXT4, use the root directory directly with full path
-    ROOT_DIR.main_fs.root_dir().readlink(path, buf)
+    // Try EXT4 filesystem first for regular symlinks
+    ROOT_DIR
+        .main_fs
+        .root_dir()
+        .readlink(path, buf)
+        .or_else(|_| {
+            // Fallback to VFS layer for mount points (procfs, ramfs, etc.)
+            lookup(None, path)?.readlink("", buf)
+        })
 }
 
 pub(crate) fn set_perm(path: &str, mode: u16) -> AxResult {

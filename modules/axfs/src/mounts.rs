@@ -1,7 +1,16 @@
+use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 use axfs_vfs::{VfsNodeType, VfsOps, VfsResult};
 
 use crate::fs;
+
+/// Weak linkage function to get current process executable path.
+/// This will be overridden by the actual implementation in higher layers.
+#[linkage = "weak"]
+#[unsafe(no_mangle)]
+unsafe fn get_current_process_exe_path() -> String {
+    "/musl/busybox".to_string()
+}
 
 #[cfg(feature = "devfs")]
 pub(crate) fn devfs() -> Arc<fs::devfs::DeviceFileSystem> {
@@ -47,6 +56,9 @@ pub(crate) fn procfs() -> VfsResult<Arc<fs::ramfs::RamFileSystem>> {
     // Create /proc/self/stat
     proc_root.create("self", VfsNodeType::Dir)?;
     proc_root.create("self/stat", VfsNodeType::File)?;
+
+    // Create /proc/self/exe as dynamic symlink
+    procfs.add_dynamic_symlink("self/exe", || unsafe { get_current_process_exe_path() })?;
 
     // Create /proc/mounts for df command
     proc_root.create("mounts", VfsNodeType::File)?;
