@@ -261,6 +261,11 @@ impl File {
         Ok(())
     }
 
+    /// Syncs the file, writes all buffered data to the underlying device.
+    pub fn fsync(&self) -> AxResult {
+        self.access_node(Cap::WRITE)?.fsync()
+    }
+
     /// Sets the cursor of the file to the specified offset. Returns the new
     /// position after the seek.
     pub fn seek(&mut self, pos: SeekFrom) -> AxResult<u64> {

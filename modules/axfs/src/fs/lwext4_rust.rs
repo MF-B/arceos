@@ -308,7 +308,7 @@ impl VfsNodeOps for FileWrapper {
         let mut file = self.0.lock();
         let path = file.get_path();
         let path = path.to_str().unwrap();
-        file.file_open(path, O_RDWR | O_CREAT | O_TRUNC)
+        file.file_open(path, O_RDWR)
             .map_err(|e| <i32 as TryInto<AxError>>::try_into(e).unwrap())?;
 
         let t = file.file_truncate(size);
@@ -345,6 +345,13 @@ impl VfsNodeOps for FileWrapper {
     fn is_symlink(&self) -> bool {
         let file = self.0.lock();
         file.get_type() == InodeTypes::EXT4_DE_SYMLINK
+    }
+
+    fn fsync(&self) -> VfsResult {
+        let mut file = self.0.lock();
+        file.file_cache_flush()
+            .map(|_v| ())
+            .map_err(|e| e.try_into().unwrap())
     }
 }
 
