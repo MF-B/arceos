@@ -60,16 +60,21 @@ pub(crate) fn procfs() -> VfsResult<Arc<fs::ramfs::RamFileSystem>> {
     // Create /proc/self/exe as dynamic symlink
     procfs.add_dynamic_symlink("self/exe", || unsafe { get_current_process_exe_path() })?;
 
-    // Create /proc/mounts for df command
+    // Create /proc/mounts for df command.
+    // TODO: Implement a real mount point management system.
     proc_root.create("mounts", VfsNodeType::File)?;
     let file_mounts = proc_root.clone().lookup("./mounts")?;
     file_mounts.write_at(0, b"/dev/vda1 / ext4 rw,relatime 0 0\n")?;
 
     // Create /proc/meminfo for free command
+    // TODO: Implement a real memory management system.
     proc_root.create("meminfo", VfsNodeType::File)?;
     let file_meminfo = proc_root.clone().lookup("./meminfo")?;
     let meminfo_content = b"MemTotal:      131072 kB\nMemFree:       65536 kB\nMemAvailable:  65536 kB\nBuffers:           0 kB\nCached:            0 kB\nSwapCached:        0 kB\nActive:            0 kB\nInactive:          0 kB\nSwapTotal:         0 kB\nSwapFree:          0 kB\n";
     file_meminfo.write_at(0, meminfo_content)?;
+
+    let interrupts = fs::ramfs::InterruptFile;
+    procfs.add("interrupts", Arc::new(interrupts));
 
     Ok(Arc::new(procfs))
 }
