@@ -82,13 +82,64 @@ impl<IO: IoTrait> VfsNodeOps for FileWrapper<'static, IO> {
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> VfsResult<usize> {
         let mut file = self.0.lock();
         file.seek(SeekFrom::Start(offset)).map_err(as_vfs_err)?; // TODO: more efficient
-        file.read(buf).map_err(as_vfs_err)
+
+        // Ensure all data is read
+        let mut total_read = 0;
+        while total_read < buf.len() {
+            let read_bytes = file.read(&mut buf[total_read..]).map_err(as_vfs_err)?;
+            if read_bytes == 0 {
+                // EOF reached
+                break;
+            }
+            total_read += read_bytes;
+        }
+
+        Ok(total_read)
     }
 
     fn write_at(&self, offset: u64, buf: &[u8]) -> VfsResult<usize> {
         let mut file = self.0.lock();
-        file.seek(SeekFrom::Start(offset)).map_err(as_vfs_err)?; // TODO: more efficient
-        file.write(buf).map_err(as_vfs_err)
+
+        // Check if we need to extend the file first
+        let current_size = file.seek(SeekFrom::End(0)).map_err(as_vfs_err)?;
+        if offset > current_size {
+            // Fill the gap with zeros
+            file.seek(SeekFrom::Start(current_size))
+                .map_err(as_vfs_err)?;
+            let gap_size = offset - current_size;
+            let zero_buf = [0u8; 4096];
+            let mut remaining = gap_size;
+
+            while remaining > 0 {
+                let chunk_size = remaining.min(4096) as usize;
+                let mut written = 0;
+
+                while written < chunk_size {
+                    let n = file
+                        .write(&zero_buf[written..chunk_size])
+                        .map_err(as_vfs_err)?;
+                    if n == 0 {
+                        return Err(VfsError::Io);
+                    }
+                    written += n;
+                }
+                remaining -= chunk_size as u64;
+            }
+        }
+
+        file.seek(SeekFrom::Start(offset)).map_err(as_vfs_err)?;
+
+        // Ensure all data is written
+        let mut total_written = 0;
+        while total_written < buf.len() {
+            let written = file.write(&buf[total_written..]).map_err(as_vfs_err)?;
+            if written == 0 {
+                break;
+            }
+            total_written += written;
+        }
+
+        Ok(total_written)
     }
 
     fn truncate(&self, size: u64) -> VfsResult {

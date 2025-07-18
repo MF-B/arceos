@@ -1,5 +1,6 @@
 use crate::alloc::string::String;
 use alloc::sync::Arc;
+use alloc::vec;
 use axerrno::AxError;
 use axfs_vfs::{VfsDirEntry, VfsError, VfsNodePerm, VfsResult};
 use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodeRef, VfsNodeType, VfsOps};
@@ -295,6 +296,28 @@ impl VfsNodeOps for FileWrapper {
         let path = path.to_str().unwrap();
         file.file_open(path, O_RDWR)
             .map_err(|e| <i32 as TryInto<AxError>>::try_into(e).unwrap())?;
+
+        // Check if we need to extend the file first
+        let current_size = file.file_size() as u64;
+        if offset > current_size {
+            file.file_seek(current_size as i64, SEEK_SET)
+                .map_err(|e| <i32 as TryInto<AxError>>::try_into(e).unwrap())?;
+
+            let gap_size = offset - current_size;
+            let zero_buf = vec![0u8; gap_size.min(4096) as usize];
+            let mut remaining = gap_size;
+
+            while remaining > 0 {
+                let write_size = remaining.min(4096);
+                let written = file
+                    .file_write(&zero_buf[..write_size as usize])
+                    .map_err(|e| <i32 as TryInto<AxError>>::try_into(e).unwrap())?;
+                if written == 0 {
+                    break;
+                }
+                remaining -= written as u64;
+            }
+        }
 
         file.file_seek(offset as i64, SEEK_SET)
             .map_err(|e| <i32 as TryInto<AxError>>::try_into(e).unwrap())?;
