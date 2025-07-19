@@ -14,4 +14,3 @@ pub mod devfs;
 
 #[cfg(feature = "ramfs")]
 pub mod ramfs;
-// pub use axfs_ramfs as ramfs;

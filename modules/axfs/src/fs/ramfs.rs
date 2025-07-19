@@ -1,8 +1,9 @@
-use alloc::format;
 use alloc::string::String;
 pub use axfs_ramfs::*;
 use axfs_vfs::{VfsError, VfsNodeAttr, VfsNodeOps, VfsNodePerm, VfsNodeType, VfsResult};
 
+/// `InterruptFile` is a virtual file node that provides IRQ statistics in RAMFS.
+/// path: `/proc/interrupts`
 pub struct InterruptFile;
 
 impl VfsNodeOps for InterruptFile {
@@ -16,12 +17,15 @@ impl VfsNodeOps for InterruptFile {
     }
 
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> VfsResult<usize> {
-        let counts = axhal::irq::get_all_irq_counts();
         let mut output = String::new();
 
-        for (irq_num, count) in counts.iter().enumerate() {
-            if *count > 0 {
-                output.push_str(&format!("{irq_num}:\t\t{count}\n"));
+        #[cfg(feature = "irq")]
+        {
+            let counts = axhal::irq::get_all_irq_counts();
+            for (irq_num, count) in counts.iter().enumerate() {
+                if *count > 0 {
+                    output.push_str(&alloc::format!("{irq_num}:\t\t{count}\n"));
+                }
             }
         }
 

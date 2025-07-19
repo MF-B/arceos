@@ -66,6 +66,7 @@ fn handler_irq(irq_num: usize) -> bool {
     true
 }
 
+/// Get the count of all IRQs.
 pub fn get_all_irq_counts() -> [u64; MAX_IRQ_COUNT] {
     let mut counts = [0u64; MAX_IRQ_COUNT];
     for (i, counter) in IRQ_COUNTERS.iter().enumerate() {

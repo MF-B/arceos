@@ -3,9 +3,8 @@ use axhal::console::{read_bytes, write_bytes};
 
 use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodePerm, VfsNodeType, VfsResult};
 
-/// A tty device behaves like `/dev/tty`.
-///
-/// 一个真正的 tty 设备，实现输入输出，参考 console.rs。
+/// `TtyDev` is a virtual character device node for console I/O.
+/// path: `/dev/tty`
 pub struct TtyDev;
 
 impl VfsNodeOps for TtyDev {
@@ -19,13 +18,11 @@ impl VfsNodeOps for TtyDev {
     }
 
     fn read_at(&self, _offset: u64, buf: &mut [u8]) -> VfsResult<usize> {
-        // 直接调用 console 的 read_bytes
         let n = read_bytes(buf);
         Ok(n)
     }
 
     fn write_at(&self, _offset: u64, buf: &[u8]) -> VfsResult<usize> {
-        // 直接调用 console 的 write_bytes
         write_bytes(buf);
         Ok(buf.len())
     }

@@ -18,6 +18,7 @@ lwext4_rs = ["dep:lwext4_rust"]
 fatfs = ["dep:fatfs"]
 myfs = ["dep:crate_interface"]
 use-ramdisk = []
+irq = ["axhal/irq", "axtask?/irq"]
 
 default = ["devfs", "ramfs", "fatfs", "procfs", "sysfs"]
 
@@ -34,7 +35,7 @@ axfs_devfs = { git = "https://github.com/MF-B/axfs_crates.git", optional = true 
 axfs_ramfs = { git = "https://github.com/MF-B/axfs_crates.git", optional = true }
 crate_interface = { version = "0.1", optional = true }
 axsync = { workspace = true }
-axtask = { workspace = true }
+axtask = { workspace = true, optional = true }
 axdriver = { workspace = true, features = ["block"] }
 axdriver_block = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2" }
 lwext4_rust = { git = "https://github.com/MF-B/lwext4_rust.git", default-features = false, optional = true }
