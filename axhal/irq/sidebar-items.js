@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_all_irq_counts","register_handler","set_enable"],"type":["IrqHandler"]};
