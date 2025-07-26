@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(feature = "devfs")]
-pub mod devfs;
+pub use axfs_devfs as devfs;
 
 #[cfg(feature = "ramfs")]
 pub mod ramfs;

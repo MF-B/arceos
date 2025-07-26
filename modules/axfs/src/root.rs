@@ -432,11 +432,7 @@ pub(crate) fn read_link(path: &str, buf: &mut [u8]) -> AxResult<usize> {
 }
 
 pub(crate) fn set_perm(path: &str, mode: u16) -> AxResult {
-    let mut abs_path = absolute_path(path)?;
-    if !abs_path.ends_with('/') {
-        abs_path += "/";
-    }
-
+    let abs_path = absolute_path(path)?;
     let node = lookup(None, &abs_path)?;
     let mut attr = node.get_attr()?;
     attr.set_perm(VfsNodePerm::from_bits(mode).ok_or(AxError::InvalidInput)?);
@@ -449,4 +445,12 @@ pub(crate) fn is_symlink(path: &str) -> AxResult<bool> {
     }
     let node = lookup(None, path)?;
     Ok(node.is_symlink())
+}
+
+pub(crate) fn add_node(dir: Option<&VfsNodeRef>, path: &'static str, ty: VfsNodeRef) -> AxResult {
+    if path.is_empty() {
+        return ax_err!(NotFound);
+    }
+    let parent = parent_node_of(dir, path);
+    parent.add_node(path, ty)
 }

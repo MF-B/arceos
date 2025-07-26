@@ -16,14 +16,12 @@ unsafe fn get_current_process_exe_path() -> String {
 pub(crate) fn devfs() -> Arc<fs::devfs::DeviceFileSystem> {
     let null = fs::devfs::NullDev;
     let zero = fs::devfs::ZeroDev;
-    let tty = fs::devfs::TtyDev;
     let urandom = fs::devfs::UrandomDev::default();
     let bar = fs::devfs::ZeroDev;
     let devfs = fs::devfs::DeviceFileSystem::new();
     let foo_dir = devfs.mkdir("foo");
     devfs.add("null", Arc::new(null));
     devfs.add("zero", Arc::new(zero));
-    devfs.add("tty", Arc::new(tty));
     devfs.add("urandom", Arc::new(urandom));
     foo_dir.add("bar", Arc::new(bar));
     Arc::new(devfs)
@@ -56,25 +54,6 @@ pub(crate) fn procfs() -> VfsResult<Arc<fs::ramfs::RamFileSystem>> {
     // Create /proc/self/stat
     proc_root.create("self", VfsNodeType::Dir)?;
     proc_root.create("self/stat", VfsNodeType::File)?;
-
-    // Create /proc/self/exe as dynamic symlink
-    procfs.add_dynamic_symlink("self/exe", || unsafe { get_current_process_exe_path() })?;
-
-    // Create /proc/mounts for df command.
-    // TODO: Implement a real mount point management system.
-    proc_root.create("mounts", VfsNodeType::File)?;
-    let file_mounts = proc_root.clone().lookup("./mounts")?;
-    file_mounts.write_at(0, b"/dev/vda1 / ext4 rw,relatime 0 0\n")?;
-
-    // Create /proc/meminfo for free command
-    // TODO: Implement a real memory management system.
-    proc_root.create("meminfo", VfsNodeType::File)?;
-    let file_meminfo = proc_root.clone().lookup("./meminfo")?;
-    let meminfo_content = b"MemTotal:      131072 kB\nMemFree:       65536 kB\nMemAvailable:  65536 kB\nBuffers:           0 kB\nCached:            0 kB\nSwapCached:        0 kB\nActive:            0 kB\nInactive:          0 kB\nSwapTotal:         0 kB\nSwapFree:          0 kB\n";
-    file_meminfo.write_at(0, meminfo_content)?;
-
-    let interrupts = fs::ramfs::InterruptFile;
-    procfs.add("interrupts", Arc::new(interrupts));
 
     Ok(Arc::new(procfs))
 }

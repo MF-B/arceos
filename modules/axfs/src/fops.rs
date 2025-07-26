@@ -357,6 +357,11 @@ impl Directory {
         crate::root::create_dir(self.access_at(path)?, path)
     }
 
+    /// Adds a node at the path relative to this directory.
+    pub fn add_node(&self, path: &'static str, ty: VfsNodeRef) -> AxResult {
+        crate::root::add_node(self.access_at(path)?, path, ty)
+    }
+
     /// Removes a file at the path relative to this directory.
     pub fn remove_file(&self, path: &str) -> AxResult {
         crate::root::remove_file(self.access_at(path)?, path)
