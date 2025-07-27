@@ -55,6 +55,11 @@ pub(crate) fn procfs() -> VfsResult<Arc<fs::ramfs::RamFileSystem>> {
     proc_root.create("self", VfsNodeType::Dir)?;
     proc_root.create("self/stat", VfsNodeType::File)?;
 
+    // Create /proc/interrupts
+    proc_root.create("interrupts", VfsNodeType::File)?;
+    let intr_file = fs::ramfs::InterruptFile;
+    proc_root.add_node("interrupts", Arc::new(intr_file))?;
+
     Ok(Arc::new(procfs))
 }
 
