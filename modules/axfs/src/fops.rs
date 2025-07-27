@@ -284,6 +284,16 @@ impl File {
     pub fn get_attr(&self) -> AxResult<FileAttr> {
         self.access_node(Cap::empty())?.get_attr()
     }
+
+    /// Handles ioctl system calls.
+    pub fn ioctl(&self, op: usize, argp: *mut u8) -> AxResult<isize> {
+        self.access_node(Cap::empty())?.ioctl(op, argp)
+    }
+
+    /// Polls the file for readiness.
+    pub fn poll(&self) -> AxResult<axio::PollState> {
+        self.access_node(Cap::empty())?.poll()
+    }
 }
 
 impl Directory {

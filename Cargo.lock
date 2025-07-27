@@ -421,7 +421,7 @@ dependencies = [
 [[package]]
 name = "axfs_devfs"
 version = "0.1.2"
-source = "git+https://github.com/MF-B/axfs_crates.git#e0e99f0518124f4020d3fb2e90b6c39636d83f8b"
+source = "git+https://github.com/MF-B/axfs_crates.git#93d15b31ce0f41e39a632853b24e911312cce00d"
 dependencies = [
  "axfs_vfs",
  "log",
@@ -431,7 +431,7 @@ dependencies = [
 [[package]]
 name = "axfs_ramfs"
 version = "0.1.2"
-source = "git+https://github.com/MF-B/axfs_crates.git#e0e99f0518124f4020d3fb2e90b6c39636d83f8b"
+source = "git+https://github.com/MF-B/axfs_crates.git#93d15b31ce0f41e39a632853b24e911312cce00d"
 dependencies = [
  "axfs_vfs",
  "log",
@@ -441,7 +441,7 @@ dependencies = [
 [[package]]
 name = "axfs_vfs"
 version = "0.1.2"
-source = "git+https://github.com/MF-B/axfs_crates.git#e0e99f0518124f4020d3fb2e90b6c39636d83f8b"
+source = "git+https://github.com/MF-B/axfs_crates.git#93d15b31ce0f41e39a632853b24e911312cce00d"
 dependencies = [
  "axerrno",
  "axio",
