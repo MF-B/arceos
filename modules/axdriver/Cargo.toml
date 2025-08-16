@@ -26,6 +26,7 @@ virtio-net = ["net", "virtio", "axdriver_virtio/net"]
 virtio-gpu = ["display", "virtio", "axdriver_virtio/gpu"]
 ramdisk = ["block", "axdriver_block/ramdisk"]
 bcm2835-sdhci = ["block", "axdriver_block/bcm2835-sdhci"]
+ahci = ["block", "axdriver_block/ahci_driver"]
 ixgbe = ["net", "axdriver_net/ixgbe", "dep:axalloc", "dep:axhal", "dep:axdma"]
 fxmac = ["net", "axdriver_net/fxmac", "dep:axalloc", "dep:axhal", "dep:axdma"]
 # more devices example: e1000 = ["net", "axdriver_net/e1000"]
@@ -36,12 +37,13 @@ default = ["bus-pci"]
 log = "=0.4.21"
 cfg-if = "1.0"
 crate_interface = "0.1.4"
-axdriver_base = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2" }
-axdriver_block = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true }
-axdriver_net = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true }
-axdriver_display = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true }
-axdriver_pci = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true }
-axdriver_virtio = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true }
+memory_addr = "0.3"
+axdriver_base = { git = "https://github.com/MF-B/axdriver_crates.git" }
+axdriver_block = { git = "https://github.com/MF-B/axdriver_crates.git", optional = true }
+axdriver_net = { git = "https://github.com/MF-B/axdriver_crates.git", optional = true }
+axdriver_display = { git = "https://github.com/MF-B/axdriver_crates.git", optional = true }
+axdriver_pci = { git = "https://github.com/MF-B/axdriver_crates.git", optional = true }
+axdriver_virtio = { git = "https://github.com/MF-B/axdriver_crates.git", optional = true }
 axalloc = { workspace = true, optional = true }
 axhal = { workspace = true, optional = true }
 axconfig = { workspace = true, optional = true }

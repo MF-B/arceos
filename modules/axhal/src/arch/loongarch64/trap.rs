@@ -33,6 +33,46 @@ fn handle_page_fault(tf: &TrapFrame, mut access_flags: MappingFlags, is_user: bo
     }
 }
 
+fn handle_address_not_aligned(tf: &mut TrapFrame, from_user: bool) {
+    let bad_addr = badv::read().raw();
+    let pc = tf.era;
+    
+    warn!(
+        "Address not aligned exception @ {:#x}, bad_addr={:#x}, from_user={}",
+        pc, bad_addr, from_user
+    );
+    
+    // 暂时的处理方案：
+    // 1. 对于用户态的地址不对齐异常，我们可以尝试简单的处理
+    // 2. 对于内核态的地址不对齐异常，我们暂时panic，因为这通常表示代码有问题
+    
+    if from_user {
+        // 对于用户态，我们可以尝试一些基本的处理
+        // 这里我们先尝试跳过这条指令，看看是否能继续执行
+        warn!(
+            "Attempting to skip unaligned access instruction in user mode @ {:#x}",
+            pc
+        );
+        
+        // TODO: 这里应该实现完整的指令解析和模拟执行
+        // 现在作为临时解决方案，我们简单地跳过这条指令
+        tf.era += 4; // LoongArch64指令长度为4字节
+        
+        // 注意：这只是一个临时的解决方案，实际应用中需要：
+        // 1. 解析指令类型
+        // 2. 确定访问的数据大小
+        // 3. 模拟执行对齐的内存访问
+        // 4. 更新目标寄存器
+        
+    } else {
+        // 内核态的地址不对齐通常是代码错误，我们需要panic
+        panic!(
+            "Unaligned access in kernel mode @ {:#x}, bad_addr={:#x}:\n{:#x?}",
+            pc, bad_addr, tf
+        );
+    }
+}
+
 #[unsafe(no_mangle)]
 fn loongarch64_trap_handler(tf: &mut TrapFrame, from_user: bool) {
     let estat = estat::read();
@@ -61,6 +101,9 @@ fn loongarch64_trap_handler(tf: &mut TrapFrame, from_user: bool) {
             handle_page_fault(tf, MappingFlags::EXECUTE, from_user);
         }
         Trap::Exception(Exception::Breakpoint) => handle_breakpoint(&mut tf.era),
+        Trap::Exception(Exception::AddressNotAligned) => {
+            handle_address_not_aligned(tf, from_user);
+        }
         Trap::Interrupt(_) => {
             let irq_num: usize = estat.is().trailing_zeros() as usize;
             handle_trap!(IRQ, irq_num);

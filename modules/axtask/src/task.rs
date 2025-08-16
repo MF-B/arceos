@@ -112,7 +112,8 @@ impl TaskInner {
         F: FnOnce() + Send + 'static,
     {
         let mut t = Self::new_common(TaskId::new(), name);
-        debug!("new task: {}", t.id_name());
+        debug!("new task: {:?}", t.id());
+        debug!("task: {}", t.name());
         let kstack = TaskStack::alloc(align_up_4k(stack_size));
 
         #[cfg(feature = "tls")]

@@ -102,6 +102,8 @@ fn is_init_ok() -> bool {
 /// and the secondary CPUs call [`rust_main_secondary`].
 #[cfg_attr(not(test), unsafe(no_mangle))]
 pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
+    let sec = axhal::time::monotonic_time();
+    ax_println!("boot time: {}", sec.as_nanos());
     ax_println!("{}", LOGO);
     ax_println!(
         "\

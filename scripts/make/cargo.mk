@@ -17,9 +17,13 @@ build_args := \
   $(build_args-$(MODE)) \
   $(verbose)
 
-RUSTFLAGS:= -A unsafe_op_in_unsafe_fn
+RUSTFLAGS:= -A unsafe_op_in_unsafe_fn -g
 RUSTFLAGS_LINK_ARGS := -C link-arg=-T$(LD_SCRIPT) -C link-arg=-no-pie -C link-arg=-znostart-stop-gc
 RUSTDOCFLAGS := -Z unstable-options --enable-index-page -D rustdoc::broken_intra_doc_links
+
+ifeq ($(ARCH),loongarch64)
+  RUSTFLAGS  += -C target-feature=-ual,-lsx,-lasx,-lvz
+endif
 
 ifeq ($(MAKECMDGOALS), doc_check_missing)
   RUSTDOCFLAGS += -D missing-docs

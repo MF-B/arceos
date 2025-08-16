@@ -2,8 +2,12 @@
 
 #![allow(unused_imports, dead_code)]
 
+use core::{alloc::Layout, time::Duration};
+
 use crate::AxDeviceEnum;
 use axdriver_base::DeviceType;
+use axhal::mem::{phys_to_virt, virt_to_phys};
+use memory_addr::{pa, va};
 
 #[cfg(feature = "virtio")]
 use crate::virtio::{self, VirtIoDevMeta};
@@ -76,6 +80,61 @@ cfg_if::cfg_if! {
             fn probe_global() -> Option<AxDeviceEnum> {
                 debug!("mmc probe");
                 axdriver_block::bcm2835sdhci::SDHCIDriver::try_new().ok().map(AxDeviceEnum::from_block)
+            }
+        }
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(block_dev = "ahci")]{
+        use axalloc::global_allocator;
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn ahci_mdelay(ms: u32) {
+            axhal::time::busy_wait(Duration::from_millis(ms as u64));
+        }
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn ahci_malloc_align(size: u64, align: u32) -> u64 {
+            let size = size as usize;
+            let align = align as usize;
+            info!("ahci_malloc_align: size={:#x}, align={:#x}", size, align);
+            
+            // 创建内存布局
+            let layout = match Layout::from_size_align(size, align) {
+                Ok(layout) => layout,
+                Err(_) => {
+                    error!("ahci_malloc_align: invalid layout size={:#x}, align={:#x}", size, align);
+                    return 0;
+                }
+            };
+            
+            // 分配内存
+            let ptr = global_allocator().alloc(layout);
+            
+            let vaddr = ptr.expect("kkk").as_ptr() as u64;
+            info!("ahci_malloc_align: allocated vaddr={:#x} for size={:#x}, align={:#x}", vaddr, size, align);
+            vaddr
+        }
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn ahci_phys_to_uncached(pa: u64) -> u64 {
+            let pa = pa as usize;
+            (0x8000_0000_0000_0000 + pa) as u64
+        }
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn ahci_virt_to_phys(va: u64) -> u64 {
+            let pa = va - 0x9000_0000_0000_0000;
+            error!("ahci_v_to_p: {:#x} -> {:#x}", va, pa);
+            pa
+        }
+
+        pub struct AhciDriver;
+        register_block_driver!(AhciDriver, axdriver_block::ahci::AhciDriver);
+
+        impl DriverProbe for AhciDriver {
+            fn probe_global() -> Option<AxDeviceEnum> {
+                debug!("mmc probe");
+                let device = axdriver_block::ahci::AhciDriver::try_new();
+                debug!("get device");
+                device.ok().map(AxDeviceEnum::from_block)
             }
         }
     }

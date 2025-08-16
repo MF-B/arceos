@@ -1,0 +1,10 @@
+[build]
+target = ["loongarch64-unknown-none"]
+rustflags = [
+    "-C", "target-feature=-ual,-lsx,-lasx,-lvz",
+    "-C", "link-args=-Wl,--no-warn-mismatch -Wl,--section-alignment=0x1000 -Wl,--file-alignment=0x1000",
+    "-C", "force-frame-pointers=yes"
+]
+
+[target.loongarch64-unknown-none]
+linker = "loongarch64-unknown-linux-musl-gcc"

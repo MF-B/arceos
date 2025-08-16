@@ -3,6 +3,7 @@ use axdriver_pci::{
     BarInfo, Cam, Command, DeviceFunction, HeaderType, MemoryBarType, PciRangeAllocator, PciRoot,
 };
 use axhal::mem::phys_to_virt;
+use memory_addr::va;
 
 const PCI_BAR_NUM: u8 = 6;
 
@@ -23,6 +24,7 @@ fn config_pci_device(
         {
             // if the BAR address is not assigned, call the allocator and assign it.
             if size > 0 && address == 0 {
+                error!("try alloc addr: {:#x}, size: {}", address, size);
                 let new_addr = allocator
                     .as_mut()
                     .expect("No memory ranges available for PCI BARs!")
@@ -84,7 +86,8 @@ fn config_pci_device(
 
 impl AllDevices {
     pub(crate) fn probe_bus_devices(&mut self) {
-        let base_vaddr = phys_to_virt(axconfig::devices::PCI_ECAM_BASE.into());
+        // let base_vaddr = phys_to_virt(axconfig::devices::PCI_ECAM_BASE.into());
+        let base_vaddr = va!(0x8000_0000_0000_0000 + axconfig::devices::PCI_ECAM_BASE);
         let mut root = unsafe { PciRoot::new(base_vaddr.as_mut_ptr(), Cam::Ecam) };
 
         // PCI 32-bit MMIO space

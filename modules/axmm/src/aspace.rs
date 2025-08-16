@@ -95,9 +95,12 @@ impl AddrSpace {
     /// ensuring that all memory operations comply with page boundary requirements.
     fn validate_region(&self, start: VirtAddr, size: usize, align: PageSize) -> AxResult {
         if !self.contains_range(start, size) {
+            error!("address: {:#x} -> {:#x} is out of range", start.as_usize(), start.as_usize() + size);
             return ax_err!(InvalidInput, "address out of range");
         }
         if !start.is_aligned(align) || !is_aligned(size, align.into()) {
+            error!("address: {:#x} is not aligned", start.as_usize());
+            error!("size: {:#x} is not aligned", size);
             return ax_err!(InvalidInput, "address not aligned");
         }
         Ok(())
